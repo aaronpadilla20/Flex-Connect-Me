@@ -1,0 +1,18 @@
+ X   Y
+60, 248 - Waiting text
+
+34, 248 - Nido deshabilitado
+34, 248 - Encendiendo unidad
+
+15, 248 - Comunicando con unidad
+
+43, 248 - Programando Mac
+43, 248 - Verificando Led
+43, 248 - Verificando Mac
+
+7, 248 - Programando numero de parte
+
+29, 248 - Programando Password 
+29, 248 - Descargando Firmware
+29, 249 - Verificando Password
+
