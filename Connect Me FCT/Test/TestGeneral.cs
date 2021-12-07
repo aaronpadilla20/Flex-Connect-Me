@@ -67,6 +67,7 @@ namespace Connect_Me_FCT
             this.skip2 = false;
             this.skip3 = false;
             this.skip4 = false;
+            notConnection = false;
             this.fallaConexion = "";
             this.programada = "";
             this.valido = false;
@@ -78,35 +79,70 @@ namespace Connect_Me_FCT
                     {
                         while (!valido)
                         {
-                            this.valido = await GetMacPartNumber(console1, macBox1, pnBox1, passwordBox1, statusConnect1, progressingLabel1, progressBar1, Led1, statusTest1, "..\\Images\\button_1.jpg");
+                            try
+                            {
+                                this.valido = await GetMacPartNumber(console1, macBox1, pnBox1, passwordBox1, statusConnect1, progressingLabel1, progressBar1, Led1, statusTest1, "..\\Images\\button_1.jpg");
+                            }
+                            catch
+                            {
+                                Thread.Sleep(1000);
+                                continue;
+                            }
                             if (!valido)
                             {
-                                DialogResult res = MessageBox.Show("Desea abortar la prueba?", "Continuar", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                                if (res == DialogResult.Yes)
+                                if (this.fallaConexion.Contains("No_connected"))
                                 {
-                                    this.abortado = true;
-                                    MessageBox.Show("La prueba se ha abortado", "Prueba Abortada", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                                    if (InvokeRequired)
-                                        Invoke(new Action(() => startButton.Enabled = true));
+                                    this.codigoFalla = fallaConexion;
+                                    await GetFFeti(estadoPrueba, macBox1.Text, progressingLabel1, progressBar1, statusTest1);
+                                    serialPort.Open();
                                     return;
                                 }
+
+                                if (this.fallaConexion.Contains("VPD_Not_loaded"))
+                                {
+                                    this.codigoFalla = fallaConexion;
+                                    await GetFFeti(estadoPrueba, macBox1.Text, progressingLabel1, progressBar1, statusTest1);
+                                    serialPort.Open();
+                                    return;
+                                }
+
+                                if (this.programada.Contains("La unidad ya se encuentra programada imposible probar en FCT"))
+                                {
+                                    DialogResult res = MessageBox.Show("Desea ignorar esta imagen?", "Decision", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                                    if (res == DialogResult.Yes)
+                                    {
+                                        this.skip1 = true;
+                                        MessageBox.Show("Imagen ignorada desconecte la unidad previo a proceder con la siguiente unidad", "Imagen ignorada", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                        if (InvokeRequired)
+                                        {
+                                            Invoke(new Action(() => macBox1.Text = ""));
+                                            Invoke(new Action(() => macBox1.Enabled = false));
+                                            Invoke(new Action(() => console1.Text = ""));
+                                        }
+                                        return;
+                                    }
+                                }
+                                if (!this.flexFlowConsult.Contains("OK"))
+                                {
+                                    DialogResult res = MessageBox.Show("Desea ignorar esta imagen?", "Decision", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                                    if (res == DialogResult.Yes)
+                                    {
+                                        this.skip1 = true;
+                                        MessageBox.Show("Imagen ignorada desconecte la unidad previo a proceder con la siguiente unidad", "Imagen ignorada", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                        if (InvokeRequired)
+                                        {
+                                            Invoke(new Action(() => macBox1.Text = ""));
+                                            Invoke(new Action(() => macBox1.Enabled = false));
+                                            Invoke(new Action(() => console1.Text = ""));
+                                        }
+                                        return;
+                                    }
+                                    else
+                                    {
+                                        this.countConnected = 0;
+                                    }
+                                }
                             }
-                        }
-                        if (this.fallaConexion.Contains("Sin_Conexion"))
-                        {
-                            this.codigoFalla = fallaConexion;
-                            await GetFFeti(estadoPrueba, macBox1.Text, progressingLabel1, progressBar1, statusTest1);
-                            return;
-                        }
-                        if (this.programada.Contains("La unidad ya se encuentra programada imposible probar en FCT"))
-                        {
-                            MessageBox.Show(this.programada);
-                            if (InvokeRequired)
-                            {
-                                Invoke(new Action(() => startButton.Enabled = true));
-                            }
-                            this.serialPort.Close();
-                            return;
                         }
                         await BootingUnit(console1, console2, console3, console4,progressingLabel1,progressingLabel2,progressingLabel3,progressingLabel4,progressBar1,progressBar2,progressBar3,progressBar4);
                         await MFGOLedStatus("¿Esta parpadeando el led MFGO del slot 1?",progressingLabel1,progressBar1);
@@ -141,13 +177,33 @@ namespace Connect_Me_FCT
                     {
                         while (!valido)
                         {
-                            this.valido = await GetMacPartNumber(console1, macBox1, pnBox1, passwordBox1, statusConnect1, progressingLabel1, progressBar1, Led1, statusTest1, "..\\Images\\button_1.jpg");
+                            try
+                            {
+                                this.valido = await GetMacPartNumber(console1, macBox1, pnBox1, passwordBox1, statusConnect1, progressingLabel1, progressBar1, Led1, statusTest1, "..\\Images\\button_1.jpg");
+                            }
+                            catch
+                            {
+                                Thread.Sleep(1000);
+                                continue;
+                            }
+                            
                             if (!valido)
                             {
-                                if (this.fallaConexion.Contains("Sin_Conexion"))
+                                if (this.fallaConexion.Contains("No_connected"))
                                 {
+                                    this.skip1 = true;
                                     this.codigoFalla = fallaConexion;
                                     await GetFFeti(estadoPrueba, macBox1.Text, progressingLabel1, progressBar1, statusTest1);
+                                    serialPort.Open();
+                                    break;
+                                }
+
+                                if (this.fallaConexion.Contains("VPD_Not_loaded"))
+                                {
+                                    this.skip1 = true;
+                                    this.codigoFalla = fallaConexion;
+                                    await GetFFeti(estadoPrueba, macBox1.Text, progressingLabel1, progressBar1, statusTest1);
+                                    serialPort.Open();
                                     break;
                                 }
 
@@ -182,24 +238,47 @@ namespace Connect_Me_FCT
                                         }
                                         break;
                                     }
+                                    else
+                                    {
+                                        this.countConnected = 0;
+                                    }
+
                                 }
                             }
                         }
+                        this.notConnection = false;
                         this.valido = false;
                         this.fallaConexion = "";
                         this.programada = "";
                         this.countConnected = 0;
                         while (!valido)
                         {
-                            this.valido = await GetMacPartNumber(console2, macBox2, pnBox2, passwordBox2, statusConnect2, progressingLabel2, progressBar2, led2, statusTest2, "..\\Images\\button_2.png");
+                            try
+                            {
+                                this.valido = await GetMacPartNumber(console2, macBox2, pnBox2, passwordBox2, statusConnect2, progressingLabel2, progressBar2,led2, statusTest2, "..\\Images\\button_2.png");
+                            }
+                            catch
+                            {
+                                Thread.Sleep(1000);
+                                continue;
+                            }
                             if (!valido)
                             {
                                 if (this.skip1)
                                 {
-                                    if (this.fallaConexion.Contains("Sin_Conexion"))
+                                    if (this.fallaConexion.Contains("No_connected"))
                                     {
                                         this.codigoFalla = fallaConexion;
                                         await GetFFeti(estadoPrueba, macBox2.Text, progressingLabel2, progressBar2, statusTest2);
+                                        serialPort.Open();
+                                        return;
+                                    }
+
+                                    if (this.fallaConexion.Contains("VPD_Not_loaded"))
+                                    {
+                                        this.codigoFalla = fallaConexion;
+                                        await GetFFeti(estadoPrueba, macBox2.Text, progressingLabel2, progressBar2, statusTest2);
+                                        serialPort.Open();
                                         return;
                                     }
 
@@ -208,41 +287,56 @@ namespace Connect_Me_FCT
                                         DialogResult res = MessageBox.Show("Desea abortar la prueba?", "Decision", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                                         if (res == DialogResult.Yes)
                                         {
-                                            this.skip1 = true;
-                                            MessageBox.Show("La prueba se ha abortado", "Imagen ignorada", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                            MessageBox.Show("Prueba abortada desconecte la unidad previo a proceder con la siguiente unidad", "Imagen ignorada", MessageBoxButtons.OK, MessageBoxIcon.Information);
                                             if (InvokeRequired)
                                             {
                                                 Invoke(new Action(() => macBox2.Text = ""));
                                                 Invoke(new Action(() => macBox2.Enabled = false));
                                                 Invoke(new Action(() => console2.Text = ""));
                                             }
-                                            break;
+                                            return;
                                         }
                                     }
-
                                     if (!this.flexFlowConsult.Contains("OK"))
                                     {
                                         DialogResult res = MessageBox.Show("Desea abortar la prueba?", "Decision", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                                         if (res == DialogResult.Yes)
                                         {
-                                            this.skip1 = true;
-                                            MessageBox.Show("Prueba abortada", "Imagen ignorada", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                            MessageBox.Show("Prueba abortada desconecte la unidad previo a proceder con la siguiente unidad", "Imagen ignorada", MessageBoxButtons.OK, MessageBoxIcon.Information);
                                             if (InvokeRequired)
                                             {
                                                 Invoke(new Action(() => macBox2.Text = ""));
                                                 Invoke(new Action(() => macBox2.Enabled = false));
                                                 Invoke(new Action(() => console2.Text = ""));
                                             }
-                                            break;
+                                            return;
                                         }
+                                        else
+                                        {
+                                            this.countConnected = 0;
+                                        }
+
                                     }
                                 }
                                 else
                                 {
-                                    if (this.fallaConexion.Contains("Sin_Conexion"))
+                                    if (this.fallaConexion.Contains("No_connected"))
                                     {
+                                        this.skip2 = true;
                                         this.codigoFalla = fallaConexion;
-                                        await GetFFeti(estadoPrueba, macBox2.Text, progressingLabel2, progressBar2, statusTest2);
+                                        await GetFFeti(estadoPrueba, macBox1.Text, progressingLabel1, progressBar1, statusTest1);
+                                        MessageBox.Show("Presiona el boton de seleccion de la imagen anterior y posteriormente enciende y apaga el switch MFGI");
+                                        serialPort.Open();
+                                        break;
+                                    }
+
+                                    if (this.fallaConexion.Contains("VPD_Not_loaded"))
+                                    {
+                                        this.skip2 = true;
+                                        this.codigoFalla = fallaConexion;
+                                        await GetFFeti(estadoPrueba, macBox1.Text, progressingLabel1, progressBar1, statusTest1);
+                                        MessageBox.Show("Presiona el boton de seleccion de la imagen anterior y posteriormente enciende y apaga el switch MFGI");
+                                        serialPort.Open();
                                         break;
                                     }
 
@@ -251,7 +345,7 @@ namespace Connect_Me_FCT
                                         DialogResult res = MessageBox.Show("Desea ignorar esta imagen?", "Decision", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                                         if (res == DialogResult.Yes)
                                         {
-                                            this.skip1 = true;
+                                            this.skip2 = true;
                                             MessageBox.Show("Imagen ignorada desconecte la unidad previo a proceder con la siguiente unidad", "Imagen ignorada", MessageBoxButtons.OK, MessageBoxIcon.Information);
                                             if (InvokeRequired)
                                             {
@@ -262,13 +356,12 @@ namespace Connect_Me_FCT
                                             break;
                                         }
                                     }
-
                                     if (!this.flexFlowConsult.Contains("OK"))
                                     {
                                         DialogResult res = MessageBox.Show("Desea ignorar esta imagen?", "Decision", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                                         if (res == DialogResult.Yes)
                                         {
-                                            this.skip1 = true;
+                                            this.skip2 = true;
                                             MessageBox.Show("Imagen ignorada desconecte la unidad previo a proceder con la siguiente unidad", "Imagen ignorada", MessageBoxButtons.OK, MessageBoxIcon.Information);
                                             if (InvokeRequired)
                                             {
@@ -278,6 +371,11 @@ namespace Connect_Me_FCT
                                             }
                                             break;
                                         }
+                                        else
+                                        {
+                                            this.countConnected = 0;
+                                        }
+
                                     }
                                 }
                             }
@@ -310,13 +408,32 @@ namespace Connect_Me_FCT
                     {
                         while (!valido)
                         {
-                            this.valido = await GetMacPartNumber(console1, macBox1, pnBox1, passwordBox1, statusConnect1, progressingLabel1, progressBar1, Led1, statusTest1, "..\\Images\\button_1.jpg");
+                            try
+                            {
+                                this.valido = await GetMacPartNumber(console1, macBox1, pnBox1, passwordBox1, statusConnect1, progressingLabel1, progressBar1, Led1, statusTest1, "..\\Images\\button_1.jpg");
+                            }
+                            catch
+                            {
+                                Thread.Sleep(1000);
+                                continue;
+                            }
                             if (!valido)
                             {
-                                if (this.fallaConexion.Contains("Sin_Conexion"))
+                                if (this.fallaConexion.Contains("No_connected"))
                                 {
+                                    this.skip1 = true;
                                     this.codigoFalla = fallaConexion;
                                     await GetFFeti(estadoPrueba, macBox1.Text, progressingLabel1, progressBar1, statusTest1);
+                                    serialPort.Open();
+                                    break;
+                                }
+
+                                if (this.fallaConexion.Contains("VPD_Not_loaded"))
+                                {
+                                    this.skip1 = true;
+                                    this.codigoFalla = fallaConexion;
+                                    await GetFFeti(estadoPrueba, macBox1.Text, progressingLabel1, progressBar1, statusTest1);
+                                    serialPort.Open();
                                     break;
                                 }
 
@@ -351,22 +468,46 @@ namespace Connect_Me_FCT
                                         }
                                         break;
                                     }
+                                    else
+                                    {
+                                        this.countConnected = 0;
+                                    }
                                 }
                             }
                         }
+                        this.notConnection = false;
                         this.valido = false;
                         this.fallaConexion = "";
                         this.programada = "";
                         this.countConnected = 0;
                         while (!valido)
                         {
-                            this.valido = await GetMacPartNumber(console2, macBox2, pnBox2, passwordBox2, statusConnect2, progressingLabel2, progressBar2, led2, statusTest2, "..\\Images\\button_2.png");
+                            try
+                            {
+                                this.valido = await GetMacPartNumber(console2, macBox2, pnBox2, passwordBox2, statusConnect2, progressingLabel2, progressBar2, led2, statusTest2, "..\\Images\\button_2.png");
+                            }
+                            catch
+                            {
+                                Thread.Sleep(1000);
+                                continue;
+                            }
                             if (!valido)
                             {
-                                if (this.fallaConexion.Contains("Sin_Conexion"))
+                                if (this.fallaConexion.Contains("No_connected"))
                                 {
+                                    this.skip2 = true;
                                     this.codigoFalla = fallaConexion;
                                     await GetFFeti(estadoPrueba, macBox2.Text, progressingLabel2, progressBar2, statusTest2);
+                                    serialPort.Open();
+                                    break;
+                                }
+
+                                if (this.fallaConexion.Contains("VPD_Not_loaded"))
+                                {
+                                    this.skip2 = true;
+                                    this.codigoFalla = fallaConexion;
+                                    await GetFFeti(estadoPrueba, macBox2.Text, progressingLabel2, progressBar2, statusTest2);
+                                    serialPort.Open();
                                     break;
                                 }
 
@@ -375,7 +516,7 @@ namespace Connect_Me_FCT
                                     DialogResult res = MessageBox.Show("Desea ignorar esta imagen?", "Decision", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                                     if (res == DialogResult.Yes)
                                     {
-                                        this.skip1 = true;
+                                        this.skip2 = true;
                                         MessageBox.Show("Imagen ignorada desconecte la unidad previo a proceder con la siguiente unidad", "Imagen ignorada", MessageBoxButtons.OK, MessageBoxIcon.Information);
                                         if (InvokeRequired)
                                         {
@@ -386,13 +527,12 @@ namespace Connect_Me_FCT
                                         break;
                                     }
                                 }
-
                                 if (!this.flexFlowConsult.Contains("OK"))
                                 {
                                     DialogResult res = MessageBox.Show("Desea ignorar esta imagen?", "Decision", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                                     if (res == DialogResult.Yes)
                                     {
-                                        this.skip1 = true;
+                                        this.skip2 = true;
                                         MessageBox.Show("Imagen ignorada desconecte la unidad previo a proceder con la siguiente unidad", "Imagen ignorada", MessageBoxButtons.OK, MessageBoxIcon.Information);
                                         if (InvokeRequired)
                                         {
@@ -402,21 +542,41 @@ namespace Connect_Me_FCT
                                         }
                                         break;
                                     }
+                                    else
+                                    {
+                                        this.countConnected = 0;
+                                    }
                                 }
                             }
                         }
+                        this.notConnection = false;
                         this.valido = false;
                         this.fallaConexion = "";
                         this.programada = "";
                         this.countConnected = 0;
                         while (!valido)
                         {
-                            this.valido = await GetMacPartNumber(console3, macBox3, pnBox3, passwordBox3, statusConnect3, progressingLabel3, progressBar3, led3, statusTest3, "..\\Images\\button_3.jpg");
+                            try
+                            {
+                                this.valido = await GetMacPartNumber(console3, macBox3, pnBox3, passwordBox3, statusConnect3, progressingLabel3, progressBar3, led3, statusTest3, "..\\Images\\button_3.jpg");
+                            }
+                            catch
+                            {
+                                Thread.Sleep(1000);
+                                continue;
+                            }
                             if (!valido)
                             {
                                 if (this.skip1 && this.skip2)
                                 {
-                                    if (this.fallaConexion.Contains("Sin_Conexion"))
+                                    if (this.fallaConexion.Contains("No_connected"))
+                                    {
+                                        this.codigoFalla = fallaConexion;
+                                        await GetFFeti(estadoPrueba, macBox3.Text, progressingLabel3, progressBar3, statusTest3);
+                                        return;
+                                    }
+
+                                    if (this.fallaConexion.Contains("VPD_Not_loaded"))
                                     {
                                         this.codigoFalla = fallaConexion;
                                         await GetFFeti(estadoPrueba, macBox3.Text, progressingLabel3, progressBar3, statusTest3);
@@ -428,41 +588,55 @@ namespace Connect_Me_FCT
                                         DialogResult res = MessageBox.Show("Desea abortar la prueba?", "Decision", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                                         if (res == DialogResult.Yes)
                                         {
-                                            this.skip1 = true;
-                                            MessageBox.Show("La prueba se ha abortado", "Imagen ignorada", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                            MessageBox.Show("Prueba abortada desconecte la unidad previo a proceder con la siguiente unidad", "Imagen ignorada", MessageBoxButtons.OK, MessageBoxIcon.Information);
                                             if (InvokeRequired)
                                             {
                                                 Invoke(new Action(() => macBox3.Text = ""));
                                                 Invoke(new Action(() => macBox3.Enabled = false));
                                                 Invoke(new Action(() => console3.Text = ""));
                                             }
-                                            break;
+                                            return;
                                         }
                                     }
-
                                     if (!this.flexFlowConsult.Contains("OK"))
                                     {
                                         DialogResult res = MessageBox.Show("Desea abortar la prueba?", "Decision", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                                         if (res == DialogResult.Yes)
                                         {
-                                            this.skip1 = true;
-                                            MessageBox.Show("Prueba abortada", "Imagen ignorada", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                            MessageBox.Show("Prueba abortada desconecte la unidad previo a proceder con la siguiente unidad", "Imagen ignorada", MessageBoxButtons.OK, MessageBoxIcon.Information);
                                             if (InvokeRequired)
                                             {
                                                 Invoke(new Action(() => macBox3.Text = ""));
                                                 Invoke(new Action(() => macBox3.Enabled = false));
                                                 Invoke(new Action(() => console3.Text = ""));
                                             }
-                                            break;
+                                            return;
+                                        }
+                                        else
+                                        {
+                                            this.countConnected = 0;
                                         }
                                     }
                                 }
                                 else
                                 {
-                                    if (this.fallaConexion.Contains("Sin_Conexion"))
+                                    if (this.fallaConexion.Contains("No_connected"))
                                     {
+                                        this.skip3 = true;
                                         this.codigoFalla = fallaConexion;
                                         await GetFFeti(estadoPrueba, macBox3.Text, progressingLabel3, progressBar3, statusTest3);
+                                        MessageBox.Show("Presiona el boton de seleccion de la imagen anterior y posteriormente enciende y apaga el switch MFGI");
+                                        serialPort.Open();
+                                        break;
+                                    }
+
+                                    if (this.fallaConexion.Contains("VPD_Not_loaded"))
+                                    {
+                                        this.skip3 = true;
+                                        this.codigoFalla = fallaConexion;
+                                        await GetFFeti(estadoPrueba, macBox3.Text, progressingLabel3, progressBar3, statusTest3);
+                                        MessageBox.Show("Presiona el boton de seleccion de la imagen anterior y posteriormente enciende y apaga el switch MFGI");
+                                        serialPort.Open();
                                         break;
                                     }
 
@@ -471,7 +645,7 @@ namespace Connect_Me_FCT
                                         DialogResult res = MessageBox.Show("Desea ignorar esta imagen?", "Decision", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                                         if (res == DialogResult.Yes)
                                         {
-                                            this.skip1 = true;
+                                            this.skip3 = true;
                                             MessageBox.Show("Imagen ignorada desconecte la unidad previo a proceder con la siguiente unidad", "Imagen ignorada", MessageBoxButtons.OK, MessageBoxIcon.Information);
                                             if (InvokeRequired)
                                             {
@@ -482,13 +656,12 @@ namespace Connect_Me_FCT
                                             break;
                                         }
                                     }
-
                                     if (!this.flexFlowConsult.Contains("OK"))
                                     {
                                         DialogResult res = MessageBox.Show("Desea ignorar esta imagen?", "Decision", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                                         if (res == DialogResult.Yes)
                                         {
-                                            this.skip1 = true;
+                                            this.skip3 = true;
                                             MessageBox.Show("Imagen ignorada desconecte la unidad previo a proceder con la siguiente unidad", "Imagen ignorada", MessageBoxButtons.OK, MessageBoxIcon.Information);
                                             if (InvokeRequired)
                                             {
@@ -497,6 +670,10 @@ namespace Connect_Me_FCT
                                                 Invoke(new Action(() => console3.Text = ""));
                                             }
                                             break;
+                                        }
+                                        else
+                                        {
+                                            this.countConnected = 0;
                                         }
                                     }
                                 }
@@ -551,10 +728,21 @@ namespace Connect_Me_FCT
                             }
                             if (!valido)
                             {
-                                if (this.fallaConexion.Contains("Sin_Conexion"))
+                                if (this.fallaConexion.Contains("No_connected"))
                                 {
+                                    this.skip1 = true;
                                     this.codigoFalla = fallaConexion;
                                     await GetFFeti(estadoPrueba, macBox1.Text, progressingLabel1, progressBar1, statusTest1);
+                                    serialPort.Open();
+                                    break;
+                                }
+
+                                if (this.fallaConexion.Contains("VPD_Not_loaded"))
+                                {
+                                    this.skip1 = true;
+                                    this.codigoFalla = fallaConexion;
+                                    await GetFFeti(estadoPrueba, macBox1.Text, progressingLabel1, progressBar1, statusTest1);
+                                    serialPort.Open();
                                     break;
                                 }
 
@@ -597,6 +785,7 @@ namespace Connect_Me_FCT
                                 }
                             }
                         }
+                        this.notConnection = false;
                         this.valido = false;
                         this.fallaConexion = "";
                         this.programada = "";
@@ -616,10 +805,21 @@ namespace Connect_Me_FCT
 
                             if (!valido)
                             {
-                                if (this.fallaConexion.Contains("Sin_Conexion"))
+                                if (this.fallaConexion.Contains("No_connected"))
                                 {
+                                    this.skip2 = true;
                                     this.codigoFalla = fallaConexion;
                                     await GetFFeti(estadoPrueba, macBox2.Text, progressingLabel2, progressBar2, statusTest2);
+                                    serialPort.Open();
+                                    break;
+                                }
+
+                                if (this.fallaConexion.Contains("VPD_Not_loaded"))
+                                {
+                                    this.skip2 = true;
+                                    this.codigoFalla = fallaConexion;
+                                    await GetFFeti(estadoPrueba, macBox2.Text, progressingLabel2, progressBar2, statusTest2);
+                                    serialPort.Open();
                                     break;
                                 }
 
@@ -662,6 +862,7 @@ namespace Connect_Me_FCT
                                 }
                             }
                         }
+                        this.notConnection = false;
                         this.valido = false;
                         this.fallaConexion = "";
                         this.programada = "";
@@ -679,10 +880,21 @@ namespace Connect_Me_FCT
                             }
                             if (!valido)
                             {
-                                if (this.fallaConexion.Contains("Sin_Conexion"))
+                                if (this.fallaConexion.Contains("No_connected"))
                                 {
+                                    this.skip3 = true;
                                     this.codigoFalla = fallaConexion;
                                     await GetFFeti(estadoPrueba, macBox3.Text, progressingLabel3, progressBar3, statusTest3);
+                                    serialPort.Open();
+                                    break;
+                                }
+
+                                if (this.fallaConexion.Contains("VPD_Not_loaded"))
+                                {
+                                    this.skip3 = true;
+                                    this.codigoFalla = fallaConexion;
+                                    await GetFFeti(estadoPrueba, macBox3.Text, progressingLabel3, progressBar3, statusTest3);
+                                    serialPort.Open();
                                     break;
                                 }
 
@@ -725,6 +937,7 @@ namespace Connect_Me_FCT
                                 }
                             }
                         }
+                        this.notConnection = false;
                         this.valido = false;
                         this.fallaConexion = "";
                         this.programada = "";
@@ -744,10 +957,17 @@ namespace Connect_Me_FCT
                             {
                                 if (this.skip1 && this.skip2 && this.skip3)
                                 {
-                                    if (this.fallaConexion.Contains("Sin_Conexion"))
+                                    if (this.fallaConexion.Contains("No_connected"))
                                     {
                                         this.codigoFalla = fallaConexion;
                                         await GetFFeti(estadoPrueba, macBox4.Text, progressingLabel4, progressBar4, statusTest4);
+                                        return;
+                                    }
+
+                                    if (this.fallaConexion.Contains("VPD_Not_loaded"))
+                                    {
+                                        this.codigoFalla = fallaConexion;
+                                        await GetFFeti(estadoPrueba, macBox3.Text, progressingLabel3, progressBar3, statusTest3);
                                         return;
                                     }
 
@@ -764,7 +984,7 @@ namespace Connect_Me_FCT
                                                 Invoke(new Action(() => macBox4.Enabled = false));
                                                 Invoke(new Action(() => console4.Text = ""));
                                             }
-                                            break;
+                                            return;
                                         }
                                     }
 
@@ -781,7 +1001,7 @@ namespace Connect_Me_FCT
                                                 Invoke(new Action(() => macBox4.Enabled = false));
                                                 Invoke(new Action(() => console4.Text = ""));
                                             }
-                                            break;
+                                            return;
                                         }
                                         else
                                         {
@@ -791,10 +1011,23 @@ namespace Connect_Me_FCT
                                 }
                                 else
                                 {
-                                    if (this.fallaConexion.Contains("Sin_Conexion"))
+                                    if (this.fallaConexion.Contains("No_connected"))
                                     {
+                                        this.skip4 = true;
                                         this.codigoFalla = fallaConexion;
                                         await GetFFeti(estadoPrueba, macBox4.Text, progressingLabel4, progressBar4, statusTest4);
+                                        MessageBox.Show("Presiona el boton de seleccion de la imagen anterior y posteriormente enciende y apaga el switch MFGI");
+                                        serialPort.Open();
+                                        break;
+                                    }
+
+                                    if (this.fallaConexion.Contains("VPD_Not_loaded"))
+                                    {
+                                        this.skip4 = true;
+                                        this.codigoFalla = fallaConexion;
+                                        await GetFFeti(estadoPrueba, macBox4.Text, progressingLabel4, progressBar4, statusTest4);
+                                        MessageBox.Show("Presiona el boton de seleccion de la imagen anterior y posteriormente enciende y apaga el switch MFGI");
+                                        serialPort.Open();
                                         break;
                                     }
 
@@ -892,7 +1125,11 @@ namespace Connect_Me_FCT
                     }
                     break;
             }
-
+            MessageBox.Show("Favor de desenergizar la fixtura", "Test Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            ClearSlot(macBox1,pnBox1, passwordBox1, statusConnect1, progressingLabel1, progressBar1,console1,Led1, statusTest1);
+            ClearSlot(macBox2, pnBox2, passwordBox2, statusConnect2, progressingLabel2, progressBar2, console2, led2, statusTest2);
+            ClearSlot(macBox3, pnBox3, passwordBox3, statusConnect3, progressingLabel3, progressBar3, console3, led3, statusTest3);
+            ClearSlot(macBox4, pnBox4, passwordBox4, statusConnect4, progressingLabel4, progressBar4, console4, led4, statusTest4);
         }
     }
 }

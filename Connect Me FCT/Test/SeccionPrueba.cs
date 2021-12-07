@@ -13,6 +13,7 @@ namespace Connect_Me_FCT
         string originalMacAddress;
         int countConnected;
         string fallaConexion;
+        bool notConnection;
         string programada;
         bool programmed;
         //PRIMERA PARTE -------------------------------------------------------------------------------------------------------------------------
@@ -23,7 +24,6 @@ namespace Connect_Me_FCT
             if (InvokeRequired)
                 Invoke(new Action(() => console.AppendText("Hora inicio: " + DateTime.Now.ToString("dd/MM/yyyy hh:mm:ss tt" + "\r\n"))));
                 Invoke(new Action(() => console.ScrollToCaret()));
-            MessageBox.Show("Ingrese Mac Address");
             if (InvokeRequired)
             {
                 Invoke(new Action(() => status.Image = System.Drawing.Image.FromFile("..\\Images\\In progress.png")));
@@ -85,8 +85,10 @@ namespace Connect_Me_FCT
                 countConnected++;
                 if (countConnected >= 4)
                 {
+                    this.presionaBoton.Abort();
+                    this.notConnection = true;
                     this.countConnected = 0;
-                    this.fallaConexion = "Sin_Conexion";
+                    this.fallaConexion = "No_connected";
                     return false;
                 }
                 Thread.Sleep(1000);
@@ -122,7 +124,6 @@ namespace Connect_Me_FCT
                 serialResponse = serialPort.ReadExisting();
                 Thread.Sleep(1000);
             } while (!serialResponse.Contains("Enter 10 digit part number as NNNNNNNNNN followed by [Enter]: "));
-            MessageBox.Show("Ingrese el numero de parte");
             if (InvokeRequired)
             {
                 Invoke(new Action(() => console.AppendText("Enter 10 digit part number as NNNNNNNNNN followed by [Enter]:")));
@@ -130,6 +131,7 @@ namespace Connect_Me_FCT
                 Invoke(new Action(() => pnTextBox.Enabled = true));
                 Invoke(new Action(() => pnTextBox.Focus()));
             }
+            MessageBox.Show("Ingresa Part Number");
             await obtenPN(pnTextBox,macTextBox);
             if (InvokeRequired)
             {
@@ -138,12 +140,22 @@ namespace Connect_Me_FCT
                 Invoke(new Action(() => pnTextBox.Enabled = false));
             }
             serialPort.WriteLine(partNumber);
-            Thread.Sleep(1000);
+            Thread.Sleep(8500);
+            this.countConnected = 0;
             do
             {
                 serialResponse += serialPort.ReadExisting();
+                if (countConnected >=2)
+                {
+                    this.presionaBoton.Abort();
+                    this.notConnection = true;
+                    this.countConnected = 0;
+                    this.fallaConexion = "VPD_Not_loaded";
+                    return false;
+                }
+                countConnected++;
                 Thread.Sleep(1000);
-            } while (serialResponse.Contains("Parsing VPD"));
+            } while (!serialResponse.Contains("Parsing VPD"));
             if (InvokeRequired)
             {
                 Invoke(new Action(() => progressBar.Value = 40));
@@ -1370,8 +1382,21 @@ namespace Connect_Me_FCT
             if (mensaje == "Presione el boton de seleccion" || mensaje == "Apague y encienda el switch MFGI")
                 while (true)
                 {
-                    if (this.conectado || this.booting || this.programmed)
+                    if (this.conectado || this.booting || this.programmed || this.notConnection)
                     {
+                        if (!this.notConnection)
+                        {
+                            if (instructionWin.IsDisposed)
+                            {
+                                break;
+                            }
+                            else
+                            {
+                                conectado = false;
+                                instructionWin.Close();
+                                continue;
+                            }
+                        }
                         conectado = false;
                         instructionWin.Close();
                         break;
